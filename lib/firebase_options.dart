@@ -64,14 +64,12 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCNhjr6L4uvmqqhtYLHZ-slciyX4p2CXSo',
-    appId: '1:500327925220:ios:147e07f8f9cc3b9b1c73f1',
+    apiKey: '',
+    appId: '',
     messagingSenderId: '',
-    projectId: 'fcmweb-5368f',
-    androidClientId:
-        '500327925220-l3np8tvtcneai75jll4rsjoe91g38m7m.apps.googleusercontent.com',
-    iosClientId:
-        '500327925220-umc0u04h1e3rbi1ikl3oku2cglbk8950.apps.googleusercontent.com',
-    iosBundleId: 'com.example.keeplist',
+    projectId: '',
+    androidClientId: '',
+    iosClientId: '',
+    iosBundleId: 'com.example.list_test',
   );
 }
