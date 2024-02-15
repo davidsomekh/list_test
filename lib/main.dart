@@ -1,6 +1,14 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:list_test/auth.dart';
+import 'package:list_test/firebase_options.dart';
 
-void main() {
+Future<void> main() async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MyApp());
 }
 
@@ -31,6 +39,13 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   List<int> _itemOrder = [];
+  final _formKey = GlobalKey<FormState>();
+
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _bLoginProgress = false;
+  String _loginError = "";
 
   @override
   void initState() {
@@ -48,8 +63,98 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget loginPage() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Login'),
+      ),
+      body:
+          loginWidget(), // This already returns a Form widget wrapped in a Column
+    );
+  }
+
+  Widget loginWidget() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const SizedBox(height: 10),
+          TextFormField(
+            controller: _usernameController,
+            decoration: const InputDecoration(
+              labelText: 'Username',
+              hintText: 'Enter your username',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.person),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter a username';
+              }
+              return null; // Return null if the entered username is valid
+            },
+          ),
+          const SizedBox(height: 10),
+          TextFormField(
+            controller: _passwordController,
+            decoration: const InputDecoration(
+              labelText: 'Password',
+              hintText: 'Enter your password',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.password),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter a username';
+              }
+              return null; // Return null if the entered username is valid
+            },
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: ElevatedButton(
+              onPressed: () {
+                // Validate returns true if the form is valid, otherwise false.
+                if (_formKey.currentState!.validate()) {
+                  // If the form is valid, display a Snackbar.
+                  signInWithEmailAndPassword();
+                }
+              },
+              child: const Text('Submit'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(_loginError),
+        ],
+      ),
+    );
+  }
+
+  Future<void> signInWithEmailAndPassword() async {
+    try {
+      setState(() {
+        _bLoginProgress = true;
+      });
+
+      await Auth().signInWithEmailAndPassword(
+        email: _usernameController.text,
+        password: _passwordController.text,
+      );
+
+      setState(() {
+        _bLoginProgress = false;
+      });
+    } on FirebaseAuthException catch (e) {
+      //  showMessage(e.message!, true);
+      setState(() {
+        _bLoginProgress = false;
+        _loginError = e.message!;
+      });
+    }
+  }
+
+  Widget listWidget() {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -74,6 +179,22 @@ class _MyHomePageState extends State<MyHomePage> {
         tooltip: 'Add Item',
         child: const Icon(Icons.add),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder(
+      stream: Auth().authStateChanges,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const CircularProgressIndicator();
+        } else if (snapshot.hasData) {
+          return listWidget();
+        } else {
+          return loginPage();
+        }
+      },
     );
   }
 }
