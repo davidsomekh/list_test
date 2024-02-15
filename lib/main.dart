@@ -94,16 +94,16 @@ class MyListWidgetState extends State<MyListWidget> {
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
-
+class LoginWidget extends StatefulWidget {
   final String title;
 
+  const LoginWidget({Key? key, required this.title}) : super(key: key);
+
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  LoginWidgetState createState() => LoginWidgetState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class LoginWidgetState extends State<LoginWidget> {
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _usernameController = TextEditingController();
@@ -112,20 +112,27 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _bLoginProgress = false;
   String _loginError = "";
 
-  @override
-  void initState() {
-    super.initState();
-    // _itemOrder = List.generate(25, (index) => index);
-  }
+  Future<void> signInWithEmailAndPassword() async {
+    try {
+      setState(() {
+        _bLoginProgress = true;
+      });
 
-  Widget loginPage() {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Login'),
-      ),
-      body:
-          loginWidget(), // This already returns a Form widget wrapped in a Column
-    );
+      await Auth().signInWithEmailAndPassword(
+        email: _usernameController.text,
+        password: _passwordController.text,
+      );
+
+      setState(() {
+        _bLoginProgress = false;
+      });
+    } on FirebaseAuthException catch (e) {
+      //  showMessage(e.message!, true);
+      setState(() {
+        _bLoginProgress = false;
+        _loginError = e.message!;
+      });
+    }
   }
 
   Widget loginWidget() {
@@ -191,27 +198,32 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Future<void> signInWithEmailAndPassword() async {
-    try {
-      setState(() {
-        _bLoginProgress = true;
-      });
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text("Please login"),
+      ),
+      body: loginWidget(),
+    );
+  }
+}
 
-      await Auth().signInWithEmailAndPassword(
-        email: _usernameController.text,
-        password: _passwordController.text,
-      );
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({Key? key, required this.title}) : super(key: key);
 
-      setState(() {
-        _bLoginProgress = false;
-      });
-    } on FirebaseAuthException catch (e) {
-      //  showMessage(e.message!, true);
-      setState(() {
-        _bLoginProgress = false;
-        _loginError = e.message!;
-      });
-    }
+  final String title;
+
+  @override
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  @override
+  void initState() {
+    super.initState();
+    // _itemOrder = List.generate(25, (index) => index);
   }
 
   @override
@@ -224,7 +236,7 @@ class _MyHomePageState extends State<MyHomePage> {
         } else if (snapshot.hasData) {
           return const MyListWidget(title: "Test List");
         } else {
-          return loginPage();
+          return const LoginWidget(title: "Login");
         }
       },
     );
