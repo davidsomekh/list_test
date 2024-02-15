@@ -28,6 +28,72 @@ class MyApp extends StatelessWidget {
   }
 }
 
+// Assuming _onReorder and _itemOrder are part of MyListWidget's state or passed in some way
+class MyListWidget extends StatefulWidget {
+  final String title;
+
+  const MyListWidget({Key? key, required this.title}) : super(key: key);
+
+  @override
+  MyListWidgetState createState() => MyListWidgetState();
+}
+
+class MyListWidgetState extends State<MyListWidget> {
+  List<int> _itemOrder = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _itemOrder = List.generate(25, (index) => index);
+  }
+
+  void onReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (oldIndex < newIndex) {
+        newIndex -= 1;
+      }
+      final int item = _itemOrder.removeAt(oldIndex);
+      _itemOrder.insert(newIndex, item);
+    });
+  }
+
+  Future<void> signOut() async {
+    try {
+      await Auth().signOut();
+      // ignore: unused_catch_clause
+    } on FirebaseAuthException catch (e) {
+      //  showMessage(e.message!, true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(widget.title),
+      ),
+      body: ReorderableListView(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        onReorder: onReorder,
+        children: _itemOrder
+            .map((index) => ListTile(
+                  key: Key('$index'),
+                  title: Text('Item $index'),
+                ))
+            .toList(),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          signOut();
+        },
+        tooltip: 'Signout',
+        child: const Icon(Icons.logout),
+      ),
+    );
+  }
+}
+
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
 
@@ -38,7 +104,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<int> _itemOrder = [];
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _usernameController = TextEditingController();
@@ -50,17 +115,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    _itemOrder = List.generate(25, (index) => index);
-  }
-
-  void _onReorder(int oldIndex, int newIndex) {
-    setState(() {
-      if (oldIndex < newIndex) {
-        newIndex -= 1;
-      }
-      final int item = _itemOrder.removeAt(oldIndex);
-      _itemOrder.insert(newIndex, item);
-    });
+    // _itemOrder = List.generate(25, (index) => index);
   }
 
   Widget loginPage() {
@@ -118,6 +173,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 // Validate returns true if the form is valid, otherwise false.
                 if (_formKey.currentState!.validate()) {
                   // If the form is valid, display a Snackbar.
+                  setState(() {
+                    _bLoginProgress = true;
+                  });
                   signInWithEmailAndPassword();
                 }
               },
@@ -125,7 +183,9 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
           const SizedBox(height: 10),
-          Text(_loginError),
+          _bLoginProgress
+              ? const CircularProgressIndicator()
+              : Text(_loginError)
         ],
       ),
     );
@@ -154,34 +214,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Widget listWidget() {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: ReorderableListView(
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
-        onReorder: _onReorder,
-        children: _itemOrder
-            .map((index) => ListTile(
-                  key: Key('$index'),
-                  title: Text('Item $index'),
-                ))
-            .toList(),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          setState(() {
-            _itemOrder.add(_itemOrder.length);
-          });
-        },
-        tooltip: 'Add Item',
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
@@ -190,7 +222,7 @@ class _MyHomePageState extends State<MyHomePage> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const CircularProgressIndicator();
         } else if (snapshot.hasData) {
-          return listWidget();
+          return const MyListWidget(title: "Test List");
         } else {
           return loginPage();
         }
