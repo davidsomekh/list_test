@@ -238,14 +238,17 @@ class DB {
   }
 
   Stream<List<Task>> streamTasks() => FirebaseFirestore.instance
-      .collection('users')
-      .doc(_firebaseAuth.currentUser?.uid)
-      .collection('tasks')
-      .orderBy("created", descending: true)
-      .snapshots()
-      .map((snapshot) => snapshot.docs
-          .map((doc) => Task.fromJson(doc.data(), doc.id))
-          .toList());
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser?.uid)
+          .collection('tasks')
+          .orderBy("created", descending: true)
+          .snapshots()
+          .map((snapshot) {
+        // Continue to map the snapshot to your Task objects
+        return snapshot.docs
+            .map((doc) => Task.fromJson(doc.data(), doc.id))
+            .toList();
+      });
 
   Future<String> addProjectRecord(String name, bool bSystem) async {
     if (_firebaseAuth.currentUser?.uid == null) "";

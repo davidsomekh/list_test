@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:list_test/auth.dart';
 import 'package:list_test/firebase_options.dart';
@@ -43,6 +44,7 @@ class MyListWidgetState extends State<MyListWidget> {
   List<Task> gTasks = [];
 
   List<String> _order = [];
+  List<String> _lastOrder = [];
 
   List<Project> gProjects = [];
   bool isInputBoxVisible =
@@ -67,7 +69,7 @@ class MyListWidgetState extends State<MyListWidget> {
     da.insert(newIndex, t);
 
     List<String> order = [];
-    for (final t in gTasks) {
+    for (final t in da) {
       order.add(t.id);
     }
 
@@ -76,8 +78,9 @@ class MyListWidgetState extends State<MyListWidget> {
       gTasks = da;
     });
 
-    // Update the order in your database
     DB().updateOrder(getProjectID(), order);
+
+    // Update the order in your database
   }
 
   Future<void> signOut() async {
@@ -189,8 +192,14 @@ class MyListWidgetState extends State<MyListWidget> {
       builder: (context, snapshot) {
         if (snapshot.hasData) {
           gProjects = snapshot.data?.projects ?? [];
-          _order = snapshot.data?.projects[0].order.cast<String>() ?? [];
+          if (!listEquals(
+              _lastOrder, snapshot.data?.projects[0].order.cast<String>())) {
+            _order = snapshot.data?.projects[0].order.cast<String>() ?? [];
+            _lastOrder = _order;
+          }
         }
+
+        //  print(_order);
 
         return Scaffold(
           appBar: AppBar(
