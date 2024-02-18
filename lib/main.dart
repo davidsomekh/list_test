@@ -121,6 +121,8 @@ class MyListWidgetState extends State<MyListWidget> {
   }
 
   void _addTask(String taskText) {
+    String name = taskText.trim();
+    if (name.isEmpty) return;
     DB().addTaskRecord(taskText, "", "", false, false, 0, "", false, null);
     // Implement task sending logic here
     // For example, adding the task to a list or sending it to a database
