@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:list_test/auth.dart';
 import 'package:list_test/firebase_options.dart';
+import 'package:list_test/firestore.dart';
 
 Future<void> main() async {
   await Firebase.initializeApp(
@@ -40,6 +41,9 @@ class MyListWidget extends StatefulWidget {
 
 class MyListWidgetState extends State<MyListWidget> {
   List<int> _itemOrder = [];
+  List<Task> gTasks = [];
+  bool isInputBoxVisible =
+      false; // Step 1: State variable for input box visibility
 
   @override
   void initState() {
@@ -62,34 +66,77 @@ class MyListWidgetState extends State<MyListWidget> {
       await Auth().signOut();
       // ignore: unused_catch_clause
     } on FirebaseAuthException catch (e) {
-      //  showMessage(e.message!, true);
+      // Handle the sign-out error
     }
+  }
+
+  List<Widget> _buildListTiles() {
+    if (gTasks.isEmpty) {
+      return [];
+    }
+    return gTasks.map((task) {
+      return ListTile(
+        key: Key(task.id),
+        title: Text(task.name),
+      );
+    }).toList();
+  }
+
+  Widget newTaskWidget() {
+    return const Padding(
+      padding: EdgeInsets.all(8.0),
+      child: TextField(
+        decoration: InputDecoration(
+          labelText: 'Enter task',
+          border: OutlineInputBorder(),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: ReorderableListView(
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
-        onReorder: onReorder,
-        children: _itemOrder
-            .map((index) => ListTile(
-                  key: Key('$index'),
-                  title: Text('Item $index'),
-                ))
-            .toList(),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          signOut();
-        },
-        tooltip: 'Signout',
-        child: const Icon(Icons.logout),
-      ),
+    return StreamBuilder(
+      stream: DB().streamTasks(),
+      builder: (context, snapshot) {
+        if (snapshot.hasData) gTasks = snapshot.data!;
+
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            title: Text(widget.title),
+          ),
+          body: Column(
+            children: [
+              Expanded(
+                child: ReorderableListView(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  onReorder: onReorder,
+                  children: _buildListTiles(),
+                ),
+              ),
+              Visibility(
+                // Step 3: Input box with Visibility control
+                visible: isInputBoxVisible,
+                child: newTaskWidget(),
+              ),
+            ],
+          ),
+          floatingActionButton: Visibility(
+            visible: !isInputBoxVisible,
+            child: FloatingActionButton(
+              onPressed: () {
+                // Step 2: Toggle input box visibility
+                setState(() {
+                  isInputBoxVisible = !isInputBoxVisible;
+                });
+              },
+              tooltip: 'Add Task',
+              child: Icon(isInputBoxVisible ? Icons.close : Icons.add),
+            ),
+          ),
+        );
+      },
     );
   }
 }
