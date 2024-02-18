@@ -40,8 +40,11 @@ class MyListWidget extends StatefulWidget {
 }
 
 class MyListWidgetState extends State<MyListWidget> {
-  List<int> _itemOrder = [];
   List<Task> gTasks = [];
+
+  List<String> _order = [];
+
+  List<Project> gProjects = [];
   bool isInputBoxVisible =
       false; // Step 1: State variable for input box visibility
 
@@ -51,17 +54,30 @@ class MyListWidgetState extends State<MyListWidget> {
   @override
   void initState() {
     super.initState();
-    _itemOrder = List.generate(25, (index) => index);
+    //DB().addProjectRecord("david", false);
   }
 
   void onReorder(int oldIndex, int newIndex) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+
+    List<Task> da = gTasks;
+    Task t = da.removeAt(oldIndex);
+    da.insert(newIndex, t);
+
+    List<String> order = [];
+    for (final t in gTasks) {
+      order.add(t.id);
+    }
+
     setState(() {
-      if (oldIndex < newIndex) {
-        newIndex -= 1;
-      }
-      final int item = _itemOrder.removeAt(oldIndex);
-      _itemOrder.insert(newIndex, item);
+      _order = order;
+      gTasks = da;
     });
+
+    // Update the order in your database
+    DB().updateOrder(getProjectID(), order);
   }
 
   Future<void> signOut() async {
@@ -73,11 +89,16 @@ class MyListWidgetState extends State<MyListWidget> {
     }
   }
 
-  List<Widget> _buildListTiles() {
-    if (gTasks.isEmpty) {
+  List<Widget> _buildListTiles(List<Task> tasks) {
+    if (tasks.isEmpty) {
       return [];
     }
-    return gTasks.map((task) {
+
+    List<Task> t = _orderTasksAccordingToProject(tasks);
+
+    gTasks = t;
+
+    return t.map((task) {
       return ListTile(
         key: Key(task.id),
         title: Text(task.name),
@@ -128,17 +149,53 @@ class MyListWidgetState extends State<MyListWidget> {
     // For example, adding the task to a list or sending it to a database
   }
 
+  List<Task> _orderTasksAccordingToProject(List<Task> tasks) {
+    List<Task> order = tasks;
+
+    if (_order.isNotEmpty) {
+      // Sort gTasks based on the order defined in the project
+      order
+          .sort((a, b) => _order.indexOf(a.id).compareTo(_order.indexOf(b.id)));
+    }
+
+    return order;
+  }
+
+  String getProjectID() {
+    if (gProjects.isEmpty) {
+      return "";
+    }
+    return gProjects[0].id;
+  }
+
+  String getProjectName() {
+    if (gProjects.isEmpty) {
+      return "No Project";
+    }
+    return gProjects[0].name;
+  }
+
+  List getProjectOrder() {
+    if (gProjects.isEmpty) {
+      return [];
+    }
+    return gProjects[0].order;
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
-      stream: DB().streamTasks(),
+      stream: DB().combineStreams(),
       builder: (context, snapshot) {
-        if (snapshot.hasData) gTasks = snapshot.data!;
+        if (snapshot.hasData) {
+          gProjects = snapshot.data?.projects ?? [];
+          _order = snapshot.data?.projects[0].order.cast<String>() ?? [];
+        }
 
         return Scaffold(
           appBar: AppBar(
             backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-            title: Text(widget.title),
+            title: Text(getProjectName()),
           ),
           body: Column(
             children: [
@@ -146,7 +203,7 @@ class MyListWidgetState extends State<MyListWidget> {
                 child: ReorderableListView(
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
                   onReorder: onReorder,
-                  children: _buildListTiles(),
+                  children: _buildListTiles(snapshot.data?.tasks ?? []),
                 ),
               ),
               Visibility(

@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 
 class Task {
@@ -120,8 +122,120 @@ class Task {
       };
 }
 
+class Project {
+  bool deleted = false;
+  bool pinned = false;
+  bool showDetails = false;
+  bool systemCreated = false;
+  bool done = false;
+  String name = "babo";
+  String owner = "dave";
+  String id = "";
+  Timestamp created;
+  Timestamp updated;
+  bool home = false;
+  List order = [];
+
+  Project({
+    this.name = '',
+    this.done = false,
+    this.home = false,
+    this.pinned = false,
+    this.showDetails = true,
+    this.deleted = false,
+    this.systemCreated = false,
+    this.owner = "dave",
+    this.id = "",
+    this.order = const [],
+    required this.created,
+    required this.updated,
+    // this.created = '',
+//    this.created = FieldValue.serverTimestamp(),
+  });
+
+  static Project fromJson(Map<String, dynamic> json, String sDocID) => Project(
+        name: json['name'],
+        done: json['done'],
+        home: json['home'],
+        deleted: json['deleted'],
+        systemCreated: json['systemCreated'] ?? false,
+        showDetails: json['showDetails'] ?? true,
+        owner: json['owner'],
+        order: json['order'] ?? [""],
+        pinned: json['pinned'] ?? false,
+        id: sDocID,
+        created: json['created'] ?? Timestamp.now(),
+        updated: json['updated'] ?? Timestamp.now(),
+      );
+
+  String getTimeStamp() {
+    DateTime now = DateTime.now();
+    return now.toString();
+  }
+
+  Map<String, dynamic> toJson() => {
+        'deleted': deleted,
+        'pinned': pinned,
+        'done': done,
+        'home': home,
+        'showDetails': showDetails,
+        'name': name,
+        'owner': owner,
+        'systemCreated': systemCreated,
+        'order': order,
+        'created': FieldValue.serverTimestamp(),
+        'updated': FieldValue.serverTimestamp()
+      };
+}
+
+class Combined {
+  List<Project> projects = [];
+  List<Task> tasks = [];
+
+  Combined();
+}
+
 class DB {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+
+  void updateOrder(String projectID, List<String> recs) {
+    final usersCollection = FirebaseFirestore.instance.collection('users');
+    final docUser = usersCollection.doc(_firebaseAuth.currentUser?.uid);
+    final sTasksCollection = docUser.collection('projects');
+
+    final json = {'updated': Timestamp.now(), "order": recs};
+    if (_firebaseAuth.currentUser?.uid != null) {
+      // p.owner = sUID!;
+      //p.order = recs;
+
+      sTasksCollection.doc(projectID).update(json);
+    }
+
+    return;
+  }
+
+  Stream<Combined> combineStreams() {
+    return Rx.combineLatest2(streamTasks(), streamProjects(true),
+        (List<Task> a, List<Project> b) {
+      Combined c = Combined();
+      c.tasks = a;
+      c.projects = b;
+
+      return c;
+    });
+  }
+
+  Stream<List<Project>> streamProjects(bool bHome) {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(_firebaseAuth.currentUser?.uid)
+        .collection('projects')
+        .orderBy("name", descending: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Project.fromJson(doc.data(), doc.id))
+            .toList());
+  }
 
   Stream<List<Task>> streamTasks() => FirebaseFirestore.instance
       .collection('users')
@@ -132,6 +246,29 @@ class DB {
       .map((snapshot) => snapshot.docs
           .map((doc) => Task.fromJson(doc.data(), doc.id))
           .toList());
+
+  Future<String> addProjectRecord(String name, bool bSystem) async {
+    if (_firebaseAuth.currentUser?.uid == null) "";
+
+    String? sUID = _firebaseAuth.currentUser?.uid;
+
+    final usersCollection = FirebaseFirestore.instance.collection('users');
+    final docUser = usersCollection.doc(sUID);
+    final sTasksCollection = docUser.collection('projects');
+
+    Project p = Project(created: Timestamp.now(), updated: Timestamp.now());
+    p.owner = sUID!;
+    p.name = name.trim();
+    p.systemCreated = bSystem;
+
+    var ref = sTasksCollection.doc();
+
+    String projectID = ref.id;
+
+    ref.set(p.toJson());
+
+    return projectID;
+  }
 
   Future addTaskRecord(
       String name,
