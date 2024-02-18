@@ -45,6 +45,9 @@ class MyListWidgetState extends State<MyListWidget> {
   bool isInputBoxVisible =
       false; // Step 1: State variable for input box visibility
 
+  final TextEditingController _newTaskController = TextEditingController();
+  final FocusNode _newTaskFocusNode = FocusNode();
+
   @override
   void initState() {
     super.initState();
@@ -83,15 +86,44 @@ class MyListWidgetState extends State<MyListWidget> {
   }
 
   Widget newTaskWidget() {
-    return const Padding(
-      padding: EdgeInsets.all(8.0),
-      child: TextField(
-        decoration: InputDecoration(
-          labelText: 'Enter task',
-          border: OutlineInputBorder(),
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            // Use Expanded to ensure the TextField takes up most of the row
+            child: TextField(
+              controller: _newTaskController,
+              focusNode: _newTaskFocusNode,
+              decoration: const InputDecoration(
+                labelText: 'Enter task',
+                border: OutlineInputBorder(),
+                // Adjusted to include only the left, top, and bottom borders since the button will be on the right
+                // This is optional and can be adjusted according to your UI design
+              ),
+            ),
+          ),
+          IconButton(
+            // Using an IconButton for a more compact layout, but you can use any button widget
+            icon: const Icon(Icons.send),
+            onPressed: () {
+              // Add your send task logic here
+              // For example, you could call a method to add the task to a list or database
+              _addTask(_newTaskController.text);
+              // Optionally, clear the text field and unfocus after sending
+              _newTaskController.clear();
+              _newTaskFocusNode.requestFocus();
+            },
+          ),
+        ],
       ),
     );
+  }
+
+  void _addTask(String taskText) {
+    DB().addTaskRecord(taskText, "", "", false, false, 0, "", false, null);
+    // Implement task sending logic here
+    // For example, adding the task to a list or sending it to a database
   }
 
   @override
@@ -126,6 +158,7 @@ class MyListWidgetState extends State<MyListWidget> {
             visible: !isInputBoxVisible,
             child: FloatingActionButton(
               onPressed: () {
+                _newTaskFocusNode.requestFocus();
                 // Step 2: Toggle input box visibility
                 setState(() {
                   isInputBoxVisible = !isInputBoxVisible;
